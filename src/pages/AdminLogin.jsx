@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { adminLogin } from "../api/adminAuthApi";
-import "../styles/admin-login.css";
+import "../Styles/admin-login.css";
 
 export default function AdminLogin({ onLoginSuccess }) {
   const [email, setEmail] = useState("");
