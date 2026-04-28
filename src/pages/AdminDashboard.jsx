@@ -27,7 +27,7 @@ import {
   resolveReport,
 } from "../api/adminApi";
 
-import "../styles/admin-dashboard.css";
+import "../Styles/admin-dashboard1.css";
 
 export default function AdminDashboard({onLogout}) {
   const [activeSection, setActiveSection] = useState("dashboard");
