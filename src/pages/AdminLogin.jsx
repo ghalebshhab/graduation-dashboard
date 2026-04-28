@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { adminLogin } from "../api/adminAuthApi";
 import "../Styles/admin-login.css";
-
+import Logo from "../../public/OurLogo.png";
+//ghaleb shhab
 export default function AdminLogin({ onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +41,7 @@ export default function AdminLogin({ onLoginSuccess }) {
     <div className="admin-login-page">
       <form className="admin-login-card" onSubmit={handleLogin}>
         <div className="admin-login-logo">
-          <img src="../../public/OurLogo.png" alt="JoMap Logo" />
+          <img src={Logo} alt="JoMap Logo" />
         </div>
 
         <h1>Admin Login</h1>
