@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { adminLogin } from "../api/adminAuthApi";
 import "../Styles/admin-login.css";
-import Logo from "../../public/OurLogo.png";
+import Logo from "/OurLogo.png";
 //ghaleb shhab
 export default function AdminLogin({ onLoginSuccess }) {
   const [email, setEmail] = useState("");

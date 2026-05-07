@@ -9,6 +9,10 @@ import {
   FaTimes,
   FaMapMarkerAlt,
   FaNewspaper,
+  FaClock,
+  FaFire,
+  FaListAlt,
+  FaCalendarCheck,
 } from "react-icons/fa";
 
 import {
@@ -25,11 +29,14 @@ import {
   deletePostByAdmin,
   getReports,
   resolveReport,
+  getAdminEvents,
+  approveEvent,
+  rejectEvent,
 } from "../api/adminApi";
 
 import "../Styles/admin-dashboard1.css";
 
-export default function AdminDashboard({onLogout}) {
+export default function AdminDashboard({ onLogout }) {
   const [activeSection, setActiveSection] = useState("dashboard");
 
   const [stats, setStats] = useState(null);
@@ -38,35 +45,59 @@ export default function AdminDashboard({onLogout}) {
   const [allPlaces, setAllPlaces] = useState([]);
   const [posts, setPosts] = useState([]);
   const [reports, setReports] = useState([]);
+  const [events, setEvents] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [eventsFilter, setEventsFilter] = useState("ALL");
+
+  const safeRequest = async (requestFunction, fallbackData = []) => {
+    try {
+      const response = await requestFunction();
+
+      if (response?.success) {
+        return response.data ?? fallbackData;
+      }
+
+      if (Array.isArray(response)) {
+        return response;
+      }
+
+      return fallbackData;
+    } catch (error) {
+      console.error("API request failed:", error?.response || error);
+      return fallbackData;
+    }
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
 
     try {
       const [
-        statsRes,
-        usersRes,
-        pendingPlacesRes,
-        allPlacesRes,
-        postsRes,
-        reportsRes,
+        statsData,
+        usersData,
+        pendingPlacesData,
+        allPlacesData,
+        postsData,
+        reportsData,
+        eventsData,
       ] = await Promise.all([
-        getAdminStats(),
-        getAdminUsers(),
-        getPendingPlaces(),
-        getAllPlaces(),
-        getAdminPosts(),
-        getReports(),
+        safeRequest(getAdminStats, null),
+        safeRequest(getAdminUsers, []),
+        safeRequest(getPendingPlaces, []),
+        safeRequest(getAllPlaces, []),
+        safeRequest(getAdminPosts, []),
+        safeRequest(getReports, []),
+        safeRequest(getAdminEvents, []),
       ]);
 
-      if (statsRes.success) setStats(statsRes.data);
-      if (usersRes.success) setUsers(usersRes.data);
-      if (pendingPlacesRes.success) setPendingPlaces(pendingPlacesRes.data);
-      if (allPlacesRes.success) setAllPlaces(allPlacesRes.data);
-      if (postsRes.success) setPosts(postsRes.data);
-      if (reportsRes.success) setReports(reportsRes.data);
+      setStats(statsData);
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setPendingPlaces(Array.isArray(pendingPlacesData) ? pendingPlacesData : []);
+      setAllPlaces(Array.isArray(allPlacesData) ? allPlacesData : []);
+      setPosts(Array.isArray(postsData) ? postsData : []);
+      setReports(Array.isArray(reportsData) ? reportsData : []);
+      setEvents(Array.isArray(eventsData) ? eventsData : []);
     } catch (error) {
       console.error(error);
       alert("Failed to load dashboard data. Check your token or backend.");
@@ -78,6 +109,34 @@ export default function AdminDashboard({onLogout}) {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  const eventStats = {
+    totalEvents: events.length,
+    pendingEvents: events.filter((event) => event.status === "PENDING").length,
+    approvedEvents: events.filter((event) => event.status === "APPROVED").length,
+    rejectedEvents: events.filter((event) => event.status === "REJECTED").length,
+    activeEvents: events.filter((event) => event.status === "APPROVED").length,
+    upcomingEvents: events.filter((event) => {
+      if (!event.date || event.status !== "APPROVED") return false;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const eventDate = new Date(event.date);
+      eventDate.setHours(0, 0, 0, 0);
+
+      return eventDate >= today;
+    }).length,
+  };
+
+  const filteredEvents =
+    eventsFilter === "ALL"
+      ? events
+      : events.filter((event) => event.status === eventsFilter);
+
+  const latestEvents = [...events]
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0))
+    .slice(0, 5);
 
   const handleApprovePlace = async (placeId) => {
     const res = await approvePlace(placeId);
@@ -145,6 +204,28 @@ export default function AdminDashboard({onLogout}) {
     }
   };
 
+  const handleApproveEvent = async (eventId) => {
+    const res = await approveEvent(eventId);
+
+    if (res.success) {
+      alert("Event approved successfully");
+      loadDashboardData();
+    } else {
+      alert(res.message || "Failed to approve event");
+    }
+  };
+
+  const handleRejectEvent = async (eventId) => {
+    const res = await rejectEvent(eventId);
+
+    if (res.success) {
+      alert("Event rejected successfully");
+      loadDashboardData();
+    } else {
+      alert(res.message || "Failed to reject event");
+    }
+  };
+
   const showSection = (section) => {
     setActiveSection(section);
   };
@@ -164,7 +245,7 @@ export default function AdminDashboard({onLogout}) {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <img src="../../public/OurLogo.png" alt="JoMap Logo" />
+            <img src="/OurLogo.png" alt="JoMap Logo" />
           </div>
         </div>
 
@@ -216,9 +297,10 @@ export default function AdminDashboard({onLogout}) {
             <FaExclamationTriangle />
             <span>Reports</span>
           </button>
+
           <button className="nav-item logout-item" onClick={onLogout}>
-  <span>Logout</span>
-</button>
+            <span>Logout</span>
+          </button>
         </nav>
       </aside>
 
@@ -269,6 +351,21 @@ export default function AdminDashboard({onLogout}) {
                 value={stats?.pendingReports ?? 0}
                 color="danger"
               />
+              <StatCard
+                title="Total Events"
+                value={eventStats.totalEvents}
+                color="secondary"
+              />
+              <StatCard
+                title="Active Events"
+                value={eventStats.activeEvents}
+                color="success"
+              />
+              <StatCard
+                title="Pending Events"
+                value={eventStats.pendingEvents}
+                color="warning"
+              />
             </div>
 
             <div className="content-grid">
@@ -297,6 +394,70 @@ export default function AdminDashboard({onLogout}) {
 
               <div className="panel">
                 <div className="panel-header">
+                  <h3>Events Health</h3>
+                </div>
+
+                <ProgressRow
+                  label="Approved Events"
+                  value={percentage(eventStats.approvedEvents, eventStats.totalEvents)}
+                />
+                <ProgressRow
+                  label="Pending Events"
+                  value={percentage(eventStats.pendingEvents, eventStats.totalEvents)}
+                />
+                <ProgressRow
+                  label="Rejected Events"
+                  value={percentage(eventStats.rejectedEvents, eventStats.totalEvents)}
+                />
+                <ProgressRow
+                  label="Upcoming Active Events"
+                  value={percentage(eventStats.upcomingEvents, eventStats.totalEvents)}
+                />
+              </div>
+            </div>
+
+            <div className="content-grid">
+              <div className="panel">
+                <div className="panel-header">
+                  <h3>Latest Events</h3>
+                  <button
+                    className="btn btn-action"
+                    onClick={() => showSection("events")}
+                  >
+                    Manage Events
+                  </button>
+                </div>
+
+                {latestEvents.length === 0 ? (
+                  <p className="muted-text">No events created yet.</p>
+                ) : (
+                  <div className="mini-event-list">
+                    {latestEvents.map((event) => (
+                      <div className="mini-event-card" key={event.id}>
+                        <div className="mini-event-icon">
+                          <FaCalendarAlt />
+                        </div>
+
+                        <div>
+                          <h4>{event.title}</h4>
+                          <p>
+                            {event.governorate || "Unknown governorate"} •{" "}
+                            {event.date || "No date"}
+                          </p>
+                        </div>
+
+                        <StatusBadge
+                          text={event.status}
+                          type={getBadgeType(event.status)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="panel">
+                <div className="panel-header">
                   <h3>Status</h3>
                 </div>
 
@@ -304,7 +465,7 @@ export default function AdminDashboard({onLogout}) {
                   label="Clean Content"
                   value={Math.max(
                     0,
-                    100 - percentage(stats?.deletedPosts, stats?.totalPosts),
+                    100 - percentage(stats?.deletedPosts, stats?.totalPosts)
                   )}
                 />
                 <ProgressRow
@@ -527,7 +688,7 @@ export default function AdminDashboard({onLogout}) {
                   ) : (
                     posts.map((post) => (
                       <tr key={post.id}>
-                        <td>{post.authorName}</td>
+                        <td>{post.authorName || "Unknown"}</td>
                         <td>{post.content}</td>
                         <td>{post.type}</td>
                         <td>
@@ -557,19 +718,178 @@ export default function AdminDashboard({onLogout}) {
 
         {activeSection === "events" && (
           <section className="section active">
-            <header>
-              <h1>Event Moderation</h1>
-              <span className="subtitle">
-                This UI is ready. Backend events module can be added later.
-              </span>
+            <header className="events-header">
+              <div>
+                <h1>Event Command Center</h1>
+                <span className="subtitle">
+                  Review, approve, and manage JoMap events created by users.
+                </span>
+              </div>
+
+              <button className="btn btn-action" onClick={loadDashboardData}>
+                Refresh Events
+              </button>
             </header>
 
-            <div className="coming-soon">
-              <h2>Events Coming Soon</h2>
-              <p>
-                Keep this section as UI only until you create Event entity and
-                admin event APIs.
-              </p>
+            <div className="events-hero">
+              <div className="events-hero-content">
+                <span className="events-kicker">JoMap Events Module</span>
+                <h2>Manage cultural, tourism, and community events in one place.</h2>
+                <p>
+                  Approve high-quality events, reject invalid submissions, and
+                  track upcoming activities across Jordan.
+                </p>
+              </div>
+
+              <div className="events-hero-metrics">
+                <div>
+                  <strong>{eventStats.totalEvents}</strong>
+                  <span>Total</span>
+                </div>
+                <div>
+                  <strong>{eventStats.activeEvents}</strong>
+                  <span>Active</span>
+                </div>
+                <div>
+                  <strong>{eventStats.pendingEvents}</strong>
+                  <span>Waiting</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="events-stats-grid">
+              <EventInfoCard
+                icon={<FaListAlt />}
+                title="Total Events"
+                value={eventStats.totalEvents}
+                description="All events submitted by users"
+              />
+
+              <EventInfoCard
+                icon={<FaCalendarCheck />}
+                title="Active Events"
+                value={eventStats.activeEvents}
+                description="Approved events visible to users"
+                type="success"
+              />
+
+              <EventInfoCard
+                icon={<FaClock />}
+                title="Pending Review"
+                value={eventStats.pendingEvents}
+                description="Events waiting for admin decision"
+                type="warning"
+              />
+
+              <EventInfoCard
+                icon={<FaFire />}
+                title="Upcoming"
+                value={eventStats.upcomingEvents}
+                description="Approved events from today forward"
+                type="secondary"
+              />
+            </div>
+
+            <div className="events-toolbar">
+              <div>
+                <h2>Events Queue</h2>
+                <p>
+                  Filter and moderate events before they appear in the JoMap application.
+                </p>
+              </div>
+
+              <div className="filter-pills">
+                {["ALL", "PENDING", "APPROVED", "REJECTED"].map((filter) => (
+                  <button
+                    key={filter}
+                    className={`filter-pill ${eventsFilter === filter ? "active" : ""}`}
+                    onClick={() => setEventsFilter(filter)}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="events-grid">
+              {filteredEvents.length === 0 ? (
+                <div className="empty-events">
+                  <FaCalendarAlt />
+                  <h3>No events found</h3>
+                  <p>No events match the selected filter.</p>
+                </div>
+              ) : (
+                filteredEvents.map((event) => (
+                  <article className="event-card" key={event.id}>
+                    <div className="event-image-wrap">
+                      {event.imageUrl ? (
+                        <img src={event.imageUrl} alt={event.title} />
+                      ) : (
+                        <div className="event-image-placeholder">
+                          <FaCalendarAlt />
+                        </div>
+                      )}
+
+                      <StatusBadge
+                        text={event.status}
+                        type={getBadgeType(event.status)}
+                      />
+                    </div>
+
+                    <div className="event-card-body">
+                      <div className="event-meta">
+                        <span>{event.date || "No date"}</span>
+                        <span>{event.time || "No time"}</span>
+                      </div>
+
+                      <h3>{event.title}</h3>
+
+                      <p className="event-description">
+                        {event.description || "No description provided."}
+                      </p>
+
+                      <div className="event-details">
+                        <div>
+                          <strong>Location</strong>
+                          <span>{event.locationName || "Not specified"}</span>
+                        </div>
+
+                        <div>
+                          <strong>Governorate</strong>
+                          <span>{event.governorate || "Not specified"}</span>
+                        </div>
+
+                        <div>
+                          <strong>Created By</strong>
+                          <span>{event.createdByUsername || "Unknown user"}</span>
+                        </div>
+                      </div>
+
+                      <div className="event-actions">
+                        {event.status === "PENDING" ? (
+                          <>
+                            <button
+                              className="btn btn-action"
+                              onClick={() => handleApproveEvent(event.id)}
+                            >
+                              <FaCheck /> Approve
+                            </button>
+
+                            <button
+                              className="btn btn-danger"
+                              onClick={() => handleRejectEvent(event.id)}
+                            >
+                              <FaTimes /> Reject
+                            </button>
+                          </>
+                        ) : (
+                          <button className="btn btn-disabled">Reviewed</button>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))
+              )}
             </div>
           </section>
         )}
@@ -638,7 +958,7 @@ function StatCard({ title, value, color }) {
     <div className="stat-card">
       <h3>{title}</h3>
       <div className={`value ${color ? `text-${color}` : ""}`}>
-        {Number(value).toLocaleString()}
+        {Number(value || 0).toLocaleString()}
       </div>
     </div>
   );
@@ -674,7 +994,26 @@ function EmptyRow({ colSpan, text }) {
   );
 }
 
+function EventInfoCard({ icon, title, value, description, type }) {
+  return (
+    <div className={`event-info-card ${type ? `event-info-${type}` : ""}`}>
+      <div className="event-info-icon">{icon}</div>
+      <div>
+        <h3>{title}</h3>
+        <strong>{Number(value || 0).toLocaleString()}</strong>
+        <p>{description}</p>
+      </div>
+    </div>
+  );
+}
+
 function percentage(part, total) {
   if (!total || total === 0) return 0;
   return Math.round((Number(part || 0) / Number(total)) * 100);
+}
+
+function getBadgeType(status) {
+  if (status === "APPROVED") return "success";
+  if (status === "REJECTED") return "danger";
+  return "warning";
 }

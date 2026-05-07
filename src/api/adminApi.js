@@ -32,19 +32,21 @@ export const getAllPlaces = async () => {
 
 export const approvePlace = async (placeId) => {
   const response = await axiosClient.put(
-    `/api/admin/places/${placeId}/approve`,
+    `/api/admin/places/${placeId}/approve`
   );
   return response.data;
 };
 
 export const rejectPlace = async (placeId) => {
-  const response = await axiosClient.put(`/api/admin/places/${placeId}/reject`);
+  const response = await axiosClient.put(
+    `/api/admin/places/${placeId}/reject`
+  );
   return response.data;
 };
 
 export const deactivatePlace = async (placeId) => {
   const response = await axiosClient.put(
-    `/api/admin/places/${placeId}/deactivate`,
+    `/api/admin/places/${placeId}/deactivate`
   );
   return response.data;
 };
@@ -66,7 +68,30 @@ export const getReports = async () => {
 
 export const resolveReport = async (reportId) => {
   const response = await axiosClient.put(
-    `/api/admin/reports/${reportId}/resolve`,
+    `/api/admin/reports/${reportId}/resolve`
+  );
+  return response.data;
+};
+
+// =========================
+// EVENTS
+// =========================
+
+export const getAdminEvents = async () => {
+  const response = await axiosClient.get("/api/admin/events");
+  return response.data;
+};
+
+export const approveEvent = async (eventId) => {
+  const response = await axiosClient.put(
+    `/api/admin/events/${eventId}/approve`
+  );
+  return response.data;
+};
+
+export const rejectEvent = async (eventId) => {
+  const response = await axiosClient.put(
+    `/api/admin/events/${eventId}/reject`
   );
   return response.data;
 };
