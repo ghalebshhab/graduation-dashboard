@@ -125,18 +125,12 @@ export const approvePlace = async (placeId) => {
 };
 
 export const rejectPlace = async (placeId, rejectionReason) => {
-  let reason = rejectionReason;
-
-  if (!reason && typeof globalThis !== "undefined" && globalThis.prompt) {
-    reason = globalThis.prompt("Enter the note that will be sent to the owner:");
-  }
-
-  reason = reason?.trim();
+  const reason = rejectionReason?.trim();
 
   if (!reason) {
     return {
       success: false,
-      message: "A reason is required before completing this action.",
+      message: "A rejection reason is required.",
     };
   }
 
