@@ -2,6 +2,18 @@ import axiosClient from "./axiosClient";
 
 const unwrapApiResponse = (response) => response.data;
 
+const normalizeStats = (stats) => {
+  if (!stats) return stats;
+
+  return {
+    ...stats,
+    totalPlaces: stats.totalPlaces ?? stats.totalLocations ?? 0,
+    approvedPlaces: stats.approvedPlaces ?? stats.approvedLocations ?? 0,
+    pendingPlaces: stats.pendingPlaces ?? stats.pendingLocations ?? 0,
+    inactivePlaces: stats.inactivePlaces ?? stats.inactiveLocations ?? 0,
+  };
+};
+
 const normalizeLocation = (location) => ({
   ...location,
   id: location.id ?? location.locationId,
@@ -68,7 +80,16 @@ const normalizeListResponse = (response, normalizer) => {
 
 export const getAdminStats = async () => {
   const response = await axiosClient.get("/api/admin/dashboard/stats");
-  return unwrapApiResponse(response);
+  const data = unwrapApiResponse(response);
+
+  if (data?.success) {
+    return {
+      ...data,
+      data: normalizeStats(data.data),
+    };
+  }
+
+  return normalizeStats(data);
 };
 
 export const getAdminUsers = async () => {
