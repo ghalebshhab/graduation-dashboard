@@ -124,9 +124,10 @@ export const approvePlace = async (placeId) => {
   return unwrapApiResponse(response);
 };
 
-export const rejectPlace = async (placeId) => {
+export const rejectPlace = async (placeId, rejectionReason) => {
   const response = await axiosClient.put(
-    `/api/admin/locations/${placeId}/reject`
+    `/api/admin/locations/${placeId}/reject`,
+    { rejectionReason }
   );
   return unwrapApiResponse(response);
 };
