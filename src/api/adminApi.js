@@ -125,9 +125,24 @@ export const approvePlace = async (placeId) => {
 };
 
 export const rejectPlace = async (placeId, rejectionReason) => {
+  let reason = rejectionReason;
+
+  if (!reason && typeof globalThis !== "undefined" && globalThis.prompt) {
+    reason = globalThis.prompt("Enter the note that will be sent to the owner:");
+  }
+
+  reason = reason?.trim();
+
+  if (!reason) {
+    return {
+      success: false,
+      message: "A reason is required before completing this action.",
+    };
+  }
+
   const response = await axiosClient.put(
     `/api/admin/locations/${placeId}/reject`,
-    { rejectionReason }
+    { rejectionReason: reason }
   );
   return unwrapApiResponse(response);
 };
